@@ -41,7 +41,7 @@ jobs:
           eval $(minikube -p minikube docker-env)
 
   docker-build-and-deploy:
-    needs: pre-req  minikube-setup
+    needs: [pre-req,  minikube-setup]
     runs-on: ubuntu-latest
 
     steps:
