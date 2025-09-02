@@ -7,7 +7,7 @@ on:
     branches: [main]
 
 jobs:
-  minikube-deploy:
+  pre-req:
     runs-on: ubuntu-latest
 
     steps:
@@ -20,16 +20,31 @@ jobs:
           sudo apt-get install -y conntrack socat ebtables iptables
           curl -LO https://storage.googleapis.com/minikube/releases/latest/minikube-linux-amd64
           sudo install minikube-linux-amd64 /usr/local/bin/minikube
+    
+    minikube-setup:
+      needs: pre-req
+    runs-on: ubuntu-latest
 
-      - name: Start Minikube (docker driver, force root)
+    steps:
+      - name: Start Docker service
         run: |
-          sudo minikube start --driver=docker --force
+          sudo systemctl start docker
+
+      - name: Start Minikube (docker driver, force root, extra resources)
+        run: |
+          sudo minikube start --driver=docker --force --cpus=2 --memory=4096mb || true
           minikube status
+          minikube logs
 
       - name: Set docker-env for Minikube
         run: |
           eval $(minikube -p minikube docker-env)
 
+    docker-build-and-deploy:
+      needs: pre-req  minikube-setup
+    runs-on: ubuntu-latest
+
+    steps:
       - name: Build Docker image in Minikube
         run: |
           docker build -t devops-demo .
