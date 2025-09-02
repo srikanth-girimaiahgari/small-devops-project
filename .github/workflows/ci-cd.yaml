@@ -11,39 +11,52 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Install dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y conntrack socat ebtables iptables curl
+          sudo apt-get install -y conntrack curl socat ebtables iptables
+
+      - name: Install crictl
+        run: |
+          VERSION="v1.29.0"
+          curl -LO https://github.com/kubernetes-sigs/cri-tools/releases/download/$VERSION/crictl-$VERSION-linux-amd64.tar.gz
+          sudo tar -C /usr/local/bin -xzvf crictl-$VERSION-linux-amd64.tar.gz
+          rm crictl-$VERSION-linux-amd64.tar.gz
 
       - name: Install Minikube
         run: |
           curl -LO https://storage.googleapis.com/minikube/releases/latest/minikube-linux-amd64
           sudo install minikube-linux-amd64 /usr/local/bin/minikube
+          rm minikube-linux-amd64
 
       - name: Install kubectl
         run: |
           curl -LO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl"
           sudo install -o root -g root -m 0755 kubectl /usr/local/bin/kubectl
+          rm kubectl
 
-      - name: Start Minikube with none driver
+      - name: Start Minikube (none driver)
         run: |
-          sudo minikube start --driver=none --cpus=2 --memory=4096mb
+          sudo minikube start --driver=none
           sudo minikube update-context
           kubectl cluster-info
+          kubectl get nodes
 
-  build-and-deploy:
+  docker-build-and-deploy:
     needs: setup-minikube
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
+
+      - name: Set Docker env to Minikube
+        run: |
+          eval $(minikube docker-env)
 
       - name: Build Docker image inside Minikube
         run: |
-          eval $(minikube docker-env)
           docker build -t devops-demo .
 
       - name: Apply Kubernetes manifests
