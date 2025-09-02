@@ -1,4 +1,4 @@
-name: CI/CD Pipeline with Minikube (none driver)
+name: CI/CD Pipeline with Minikube (none driver + cri-dockerd)
 
 on:
   push:
@@ -16,7 +16,7 @@ jobs:
       - name: Install dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y conntrack curl socat ebtables iptables
+          sudo apt-get install -y conntrack curl socat ebtables iptables golang-go make
 
       - name: Install crictl
         run: |
@@ -24,6 +24,19 @@ jobs:
           curl -LO https://github.com/kubernetes-sigs/cri-tools/releases/download/$VERSION/crictl-$VERSION-linux-amd64.tar.gz
           sudo tar -C /usr/local/bin -xzvf crictl-$VERSION-linux-amd64.tar.gz
           rm crictl-$VERSION-linux-amd64.tar.gz
+
+      - name: Install cri-dockerd
+        run: |
+          git clone https://github.com/Mirantis/cri-dockerd.git
+          cd cri-dockerd
+          make cri-dockerd
+          sudo install -o root -g root -m 0755 bin/cri-dockerd /usr/local/bin/cri-dockerd
+          sudo cp -a packaging/systemd/* /etc/systemd/system/
+          sudo sed -i 's:/usr/bin/cri-dockerd:/usr/local/bin/cri-dockerd:' /etc/systemd/system/cri-dockerd.service
+          sudo systemctl daemon-reexec
+          sudo systemctl daemon-reload
+          sudo systemctl enable cri-dockerd.service
+          sudo systemctl start cri-dockerd.service
 
       - name: Install Minikube
         run: |
